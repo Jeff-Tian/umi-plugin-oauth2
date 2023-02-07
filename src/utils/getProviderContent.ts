@@ -23,6 +23,7 @@ const userSignOutUri = '${config.userSignOutUri || ''}';
 const tokenKey = 'UMI_OAUTH2_CLIENT_TOKEN_KEY';
 const codePairKey = 'UMI_OAUTH2_CLIENT_CODE_PAIR_KEY';
 const uriTargetKey = 'UMI_OAUTH2_CLIENT_URI_TARGET_KEY';
+let interval: any;
 
 const stringify = (body, headers) => {
     if(headers['Content-Type'] === 'application/x-www-form-urlencoded') {
@@ -282,6 +283,20 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
             }
         };
     }, [token, userInfo]);
+
+
+    function refreshAccessToken(initial = false): void {
+        if (token !== undefined) {
+            refresh(token);
+        } else {
+           signIn();
+        }
+        return
+    }
+
+    useEffect(() => {
+    interval = setInterval(() => refreshAccessToken(), 240000)
+    return () => clearInterval(interval)}, [token])
 
     if (isRedirectPath(history.location.pathname)) {
         if (history.location.query?.error) {
