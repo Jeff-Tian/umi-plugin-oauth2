@@ -306,7 +306,7 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
     function refreshAccessToken(initial = false): void {
         if (token !== undefined && epochTimeIsPast(tokenExpire)) {
             refresh(token);
-        }else {
+        }else if (token === undefined){
             return signIn()
         }
         return
