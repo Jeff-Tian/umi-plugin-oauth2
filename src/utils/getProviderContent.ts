@@ -23,6 +23,7 @@ const userSignOutUri = '${config.userSignOutUri || ''}';
 const tokenKey = 'UMI_OAUTH2_CLIENT_TOKEN_KEY';
 const codePairKey = 'UMI_OAUTH2_CLIENT_CODE_PAIR_KEY';
 const uriTargetKey = 'UMI_OAUTH2_CLIENT_URI_TARGET_KEY';
+const tokenExpireKey = 'UMI_OAUTH2_CLIENT_TOKEN_EXPIRE_KEY';
 let interval: any;
 
 const stringify = (body, headers) => {
@@ -31,7 +32,15 @@ const stringify = (body, headers) => {
     } else {
         return JSON.stringify(body);
     }
-}
+};
+
+const epochAtSecondsFromNow = (secondsFromNow: number) => Math.round(Date.now() / 1000 + secondsFromNow);
+
+function epochTimeIsPast(timestamp: number): boolean {
+  const now = Math.round(Date.now()) / 1000
+  const nowWithBuffer = now + 60
+  return nowWithBuffer >= timestamp
+};
 
 const OAuth2 = new ClientOAuth2(
     {
@@ -133,11 +142,14 @@ const useToken = (
 ): {
     token: OAuth2Client.TokenData;
     setToken: (token: OAuth2Client.TokenData) => void;
+    tokenExpire: number;
 } => {
     const [token, setToken] = useLocalStorageState<OAuth2Client.TokenData>(
         tokenKey,
         undefined,
     );
+
+    const [tokenExpire, setTokenExpire] = useLocalStorageState<number>(tokenExpireKey, 0);
 
     const uri: string = history.createHref(history.location);
 
@@ -146,6 +158,7 @@ const useToken = (
         if (isRedirectPath(history.location.pathname)) {
             if (history.location.query?.error) {
                 setToken(undefined);
+                setTokenExpire(0);
                 return;
             }
 
@@ -166,10 +179,12 @@ const useToken = (
                             expires_in: tk.data.expires_in,
                             id_token: tk.data.id_token,
                         })
+                         setTokenExpire(epochAtSecondsFromNow(tk.data.expires_in))
                     }
                 })
                 .catch(() => {
                         setToken(undefined);
+                        setTokenExpire(0)
                         history.push(homePagePath);
                         window.location.reload();
                         return;
@@ -178,7 +193,7 @@ const useToken = (
         }
     }, [token]);
 
-    return { token, setToken };
+    return { token, setToken, tokenExpire };
 };
 
 const Provider: React.FC<Props & IRouteComponentProps> = props => {
@@ -197,7 +212,7 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
 
     const [targetUri, setTargetUri] = useSessionStorageState<string>(uriTargetKey, homePagePath);
 
-    const { token, setToken } = useToken(history, codePair);
+    const { token, setToken,tokenExpire } = useToken(history, codePair);
 
     const { userInfo, setUserInfo } = useUserInfo(token, setToken);
 
@@ -286,16 +301,16 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
 
 
     function refreshAccessToken(initial = false): void {
-        if (token !== undefined) {
+        if (token !== undefined && epochTimeIsPast(tokenExpire)) {
             refresh(token);
-        } else {
-           signIn();
+        }else {
+            return signIn()
         }
         return
     }
 
     useEffect(() => {
-    interval = setInterval(() => refreshAccessToken(), 240000)
+    interval = setInterval(() => refreshAccessToken(), 60000)
     return () => clearInterval(interval)}, [token])
 
     if (isRedirectPath(history.location.pathname)) {
