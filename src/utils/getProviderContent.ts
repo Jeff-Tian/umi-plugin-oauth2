@@ -143,6 +143,7 @@ const useToken = (
     token: OAuth2Client.TokenData;
     setToken: (token: OAuth2Client.TokenData) => void;
     tokenExpire: number;
+    setTokenExpire: (tokenExpire:number) => void;
 } => {
     const [token, setToken] = useLocalStorageState<OAuth2Client.TokenData>(
         tokenKey,
@@ -193,7 +194,7 @@ const useToken = (
         }
     }, [token]);
 
-    return { token, setToken, tokenExpire };
+    return { token, setToken, tokenExpire,setTokenExpire };
 };
 
 const Provider: React.FC<Props & IRouteComponentProps> = props => {
@@ -212,7 +213,7 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
 
     const [targetUri, setTargetUri] = useSessionStorageState<string>(uriTargetKey, homePagePath);
 
-    const { token, setToken,tokenExpire } = useToken(history, codePair);
+    const { token, setToken, tokenExpire, setTokenExpire } = useToken(history, codePair);
 
     const { userInfo, setUserInfo } = useUserInfo(token, setToken);
 
@@ -241,6 +242,7 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
         tokenObject.refresh().then(res => {
             console.log('refresh res = ', res);
             setToken(res.data);
+            setTokenExpire(epochAtSecondsFromNow(res.data.expires_in))
         });
     }
 
@@ -278,6 +280,7 @@ const Provider: React.FC<Props & IRouteComponentProps> = props => {
 
     const signOut = () => {
         setToken(undefined);
+        setTokenExpire(undefined);
         setUserInfo(undefined);
 
         if (userSignOutUri.indexOf('http') !== -1) {
