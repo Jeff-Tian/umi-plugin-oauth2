@@ -13,7 +13,16 @@ import { History } from 'history-with-query';
 const clientId = '${config.clientId}';
 const accessTokenUri = '${config.accessTokenUri}';
 const authorizationUri = '${config.authorizationUri}';
-const redirectUri = '${config.redirectUri}';
+let redirectUri = '${config.redirectUri}';
+
+if(!redirectUri.startsWith('http')) {
+    redirectUri = window.location.origin + redirectUri;
+}
+
+if(redirectUri === 'auto') {
+    redirectUri = window.location.origin + window.location.pathname;
+};
+
 const scopes = ${JSON.stringify(config.scopes)};
 const userInfoUri = '${config.userInfoUri}';
 const homePagePath = '${config.homePagePath || '/'}';
